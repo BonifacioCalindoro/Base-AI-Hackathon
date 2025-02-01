@@ -1,0 +1,6 @@
+.env
+.venv/
+__pycache__/
+agentkit/
+wallet.json
+wallet_backup.json
