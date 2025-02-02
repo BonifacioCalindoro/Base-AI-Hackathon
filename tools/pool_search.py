@@ -6,7 +6,7 @@ from models.pool_search import SearchPoolsArgs
 
 def search_pools(query: str):
     """
-    Search for pools using a query string.
+    Search for pools and token information using a query string (token name, symbol, or address).
     
     Args:
         query: The search query string (can be token name, symbol, or address)

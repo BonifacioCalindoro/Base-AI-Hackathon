@@ -3,7 +3,7 @@ from typing import Literal
 
 class StartRSIArgs(BaseModel):
     pool_address: str
-    contract_address: str|None = None
+    contract_address: str
     timeframe: Literal['1m', '5m', '15m', '30m', '1h', '4h', '12h', '1d']
     period: int = 14
     amount_for_each_buy: float

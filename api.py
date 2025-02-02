@@ -70,6 +70,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
     last_bought = 0
     global_strategy_id = strategy_id
     print(f"Starting RSI strategy with ID: {global_strategy_id}")
+    await send_message(f"Starting RSI strategy with parameters:\ncontract_address: {args.contract_address}\npool_address: {args.pool_address}\ntimeframe: {args.timeframe}\nrsi period: {args.period}\namount_for_each_buy: {args.amount_for_each_buy}\nstrategy_type: {args.strategy_type}\nprice_range_low: {args.price_range_low}\nprice_range_high: {args.price_range_high}\nrsi_for_custom_strategy_buy: {args.rsi_for_custom_strategy_buy}\nrsi_for_custom_strategy_sell: {args.rsi_for_custom_strategy_sell}")
     if args.strategy_type == 'custom':
         buy_rsi = args.rsi_for_custom_strategy_buy
         sell_rsi = args.rsi_for_custom_strategy_sell

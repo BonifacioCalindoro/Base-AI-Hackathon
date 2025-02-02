@@ -20,7 +20,8 @@ def start_rsi_strategy(
     Start an RSI strategy for a given token. If the user does not provide all the data, you will need to ask for it.
     
     Args:
-        contract_address: The address of the token to start the strategy for
+        pool_address: The address of the pool to start the strategy for
+        contract_address: The address of the token to start the strategy for. If user does not provide this, you will need to search for it using the tools at your disposal.
         timeframe: The timeframe to use for the strategy
         amount_for_each_buy: The amount of the token to buy on each buy
         period: The period to use for the RSI calculation (optional, default is 14)
