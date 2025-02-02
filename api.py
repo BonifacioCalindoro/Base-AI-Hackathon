@@ -23,7 +23,9 @@ bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
 
 app = FastAPI()
 
-global_strategy_id = None
+global_strategy_runners = {
+    'ping pong': False
+}
 
 strategies_to_rsi_mappigs = {
     'aggressive': {
@@ -79,18 +81,18 @@ async def send_message(message: str):
             message=message,
             _tags=['api_send_message_success'])
 
-async def rsi_runner(args: StartRSIArgs, strategy_id: str):
-    global global_strategy_id
+async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
+    global global_strategy_runners
     rsi_list = []
     already_bought = False
     already_sold = True
     last_bought = 0
-    global_strategy_id = strategy_id
+    global_strategy_runners[strategy_id] = True
     logfire.info(
-        f"Starting RSI strategy with ID: {global_strategy_id}",
+        f"Starting RSI strategy with ID: {strategy_id}",
         args=args,
-        strategy_id=global_strategy_id,
-        _tags=['rsi_start'])
+        strategy_id=strategy_id,
+        _tags=['rsi_start', 'ping_pong_start'])
     message_to_send = (
         "<u>🤖 Starting RSI ping pong strategy 🏓</u>\n\n"
         f"📝 CA: <code>{args.contract_address}</code>\n"
@@ -118,7 +120,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
         buy_rsi = strategies_to_rsi_mappigs[args.strategy_type]['buy']
         sell_rsi = strategies_to_rsi_mappigs[args.strategy_type]['sell']
     while True:
-        if global_strategy_id is None:
+        if global_strategy_runners[strategy_id] is False:
             await send_message(f"🤖 Strategy stopped")
             break
         current_rsi, ohlcv_data = get_ohlcv_data_and_calculate_rsi_with_ohlcv(args.pool_address, args.timeframe, args.period)
@@ -126,29 +128,29 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
             if ohlcv_data.data.attributes.ohlcv_list[-1][4] < args.price_range_low:
                 print(f"Price out of range for {args.contract_address}")
                 logfire.info(
-                    f"Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]}). Strategy {global_strategy_id} stopped",
+                    f"Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]}). Strategy {strategy_id} stopped",
                     args=args,
-                    strategy_id=global_strategy_id,
+                    strategy_id=strategy_id,
                     price=ohlcv_data.data.attributes.ohlcv_list[-1][4],
                     _tags=['rsi_stop', 'out_of_range_low'])
-                await send_message(f"🤖 Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\n🤖 Strategy {global_strategy_id} stopped")
+                await send_message(f"🤖 Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\n🤖 Strategy {strategy_id} stopped")
                 break
         if args.price_range_high is not None:
             if ohlcv_data.data.attributes.ohlcv_list[-1][4] > args.price_range_high:
                 print(f"Price out of range for {args.contract_address}")
                 logfire.info(
-                    f"Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]}). Strategy {global_strategy_id} stopped",
+                    f"Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]}). Strategy {strategy_id} stopped",
                     args=args,
-                    strategy_id=global_strategy_id,
+                    strategy_id=strategy_id,
                     price=ohlcv_data.data.attributes.ohlcv_list[-1][4],
                     _tags=['rsi_stop', 'out_of_range_high'])
-                await send_message(f"🤖 Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\n🤖 Strategy {global_strategy_id} stopped")
+                await send_message(f"🤖 Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\n🤖 Strategy {strategy_id} stopped")
                 break
         print(f"Current RSI: {current_rsi.rsi}")
         logfire.info(
             f"Current RSI: {current_rsi.rsi}",
             args=args,
-            strategy_id=global_strategy_id,
+            strategy_id=strategy_id,
             rsi=current_rsi.rsi,
             _tags=['rsi_current'])
         rsi_list.append(current_rsi.rsi)
@@ -161,7 +163,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
         logfire.info(
             f"Direction: {direction}",
             args=args,
-            strategy_id=global_strategy_id,
+            strategy_id=strategy_id,
             direction=direction,
             _tags=['rsi_direction'])
         if rsi_list[-1] < buy_rsi and not already_bought:
@@ -169,13 +171,13 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
             with logfire.span(
                 f"Buying {args.contract_address}",
                 args=args,
-                strategy_id=global_strategy_id,
+                strategy_id=strategy_id,
                 _tags=['rsi_buy']
             ):
                 try:
                     result = wallet.trade(
                         amount=args.amount_for_each_buy,
-                        from_asset_id="ETH",
+                        from_asset_id="eth",
                         to_asset_id=args.contract_address
                     )
                     last_bought = result.to_amount
@@ -184,7 +186,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
                     logfire.info(
                         f"Trade result: {result}",
                         args=args,
-                        strategy_id=global_strategy_id,
+                        strategy_id=strategy_id,
                         amount=last_bought,
                         tx_hash=tx_hash,
                         _tags=['rsi_buy_result'])
@@ -196,7 +198,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
                     logfire.error(
                         f"Error buying {args.contract_address}: {e}",
                         args=args,
-                        strategy_id=global_strategy_id,
+                        strategy_id=strategy_id,
                         _tags=['rsi_buy_error'])
                     await send_message(f"🤖 Error buying <code>{args.contract_address}</code>: {e}")
                     #raise e
@@ -205,14 +207,14 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
             with logfire.span(
                 f"Selling {args.contract_address}",
                 args=args,
-                strategy_id=global_strategy_id,
+                strategy_id=strategy_id,
                 _tags=['rsi_sell']
             ):
                 try:
                     result = wallet.trade(
                         amount=last_bought,
                         from_asset_id=args.contract_address,
-                        to_asset_id="ETH"
+                        to_asset_id="eth"
                     )
                     print(f"Trade result: {result}")
                     got_profit = result.to_amount - args.amount_for_each_buy
@@ -220,7 +222,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
                     logfire.info(
                         f"Trade result: {result}",
                         args=args,
-                        strategy_id=global_strategy_id,
+                        strategy_id=strategy_id,
                         amount=last_bought,
                         profit=got_profit,
                         tx_hash=tx_hash,
@@ -233,7 +235,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
                     logfire.error(
                         f"Error selling {args.contract_address}: {e}",
                         args=args,
-                        strategy_id=global_strategy_id,
+                        strategy_id=strategy_id,
                         _tags=['rsi_sell_error'])
                     await send_message(f"🤖 Error selling <code>{args.contract_address}</code>: {e}")
                     #raise e
@@ -254,14 +256,14 @@ async def start_rsi_strategy(args: StartRSIArgs, background_tasks: BackgroundTas
 
 @app.post("/stop_rsi_strategy")
 async def stop_rsi_strategy(args: StopRSIArgs, background_tasks: BackgroundTasks):
-    global global_strategy_id
-    print(f"Stopping RSI strategy with ID: {global_strategy_id}")
+    global global_strategy_runners
+    print(f"Stopping RSI strategy with ID: {'ping pong'}")
     logfire.info(
-        f"Stopping RSI strategy with ID: {global_strategy_id}",
+        f"Stopping RSI strategy with ID: {'ping pong'}",
         args=args,
-        strategy_id=global_strategy_id,
+        strategy_id='ping pong',
         _tags=['api_stop_rsi_strategy'])
-    global_strategy_id = None
+    global_strategy_runners['ping pong'] = False
     return StopRSIResponse(success=True).model_dump()
 
 if __name__ == "__main__":
