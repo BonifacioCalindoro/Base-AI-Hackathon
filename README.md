@@ -23,7 +23,7 @@ cp .env.example .env
 
 ### Coinbase API Key
 
-Create an account on Coinbase Developer Platform and create an API key with all permissions.
+Create an account on https://cdp.coinbase.com/ and create an API key with all permissions.
 Then, set the following environment variables:
 
 ```bash
@@ -50,7 +50,7 @@ OPENAI_API_KEY=your-openai-api-key
 
 ### Telegram Bot Token
 
-Create a bot on t.me/BotFather and get the token.
+Create a bot on https://t.me/BotFather and get the token.
 Then, create a channel/group, add the bot to it and get the chat id (or you can directly use your personal chat id).
 Then, set the following environment variable:
 
@@ -61,7 +61,7 @@ TELEGRAM_CHAT_ID=your-desired-telegram-chat-id
 
 ### Logfire Token (Optional)
 
-Create an account on logfire.pydantic.dev, create a new project and get a Write token for it.
+Create an account on https://logfire.pydantic.dev/, create a new project and get a Write token for it.
 Then, set the following environment variable:
 
 ```bash
@@ -77,11 +77,30 @@ python api.py
 
 both services need to be running to use the agent
 
-
 ## Logging
 
-This project leverages Logfire for logging. You can find the token in the Logfire dashboard at logfire.pydantic.dev
+This project leverages Logfire, which is a tool for telemetry and observability. It is highly recommended to use it, as it will help you debug the agent and understand its behavior. You can also create dashboards to monitor the agent's performance.
 
 ## Telegram Bot
 
-To interact with the agent, just start sending a message to it or send a voice message. It will respond to you.
+To interact with the agent, just start sending a message to it or send a voice message. It will respond to you with natural language.
+
+## Example interaction:
+
+```
+Hello, I want to buy USDC with 0.001 ETH
+```
+
+```
+Hello, I want to sell all my USDC for ETH
+```
+
+```
+Hey, i want you to find a good pool for this contract address: 0x4f9fd6be4a90f2620860d680c0d4d5fb53d1a825
+
+Then open an aggressive rsi with 0.0001ETH per buy, on 15m timeframes
+```
+
+```
+Close the rsi now
+```
