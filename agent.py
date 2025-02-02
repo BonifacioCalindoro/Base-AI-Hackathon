@@ -17,6 +17,8 @@ from tools.pool_search import search_pools_tool
 
 import logfire
 
+load_dotenv()
+
 logfire.configure(
     token=os.getenv('LOGFIRE_TOKEN'),
     service_name='ai_agent',
@@ -27,7 +29,6 @@ logfire.configure(
 # Configure a file to persist the agent's CDP MPC Wallet Data.
 wallet_data_file = "wallet.json"
 
-load_dotenv()
 
 def initialize_agent():
     with logfire.span(

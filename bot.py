@@ -9,6 +9,9 @@ import logging
 import os
 import logfire
 
+load_dotenv()
+
+
 logfire.configure(
     token=os.getenv('LOGFIRE_TOKEN'),
     service_name='telegram_bot',
@@ -21,8 +24,6 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
-load_dotenv()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logfire.info(

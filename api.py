@@ -9,6 +9,8 @@ from cdp_langchain.utils import CdpAgentkitWrapper
 from telegram import Bot
 import logfire
 
+load_dotenv()
+
 logfire.configure(
     token=os.getenv('LOGFIRE_TOKEN'),
     service_name='rsi-backend',
@@ -16,7 +18,6 @@ logfire.configure(
     scrubbing=False
 )
 
-load_dotenv()
 
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
 
@@ -91,19 +92,23 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
         strategy_id=global_strategy_id,
         _tags=['rsi_start'])
     message_to_send = (
-        "<u>🤖 Starting RSI ping pong strategy 🏓</u>"
-        f"- 📝 CA: <code>{args.contract_address}</code>"
-        f"- 🏊 Pool: <code>{args.pool_address}</code>" 
-        f"- ⏱️ RSI timeframe: <code>{args.timeframe}</code>"
-        f"- 📊 RSI period: <code>{args.period}</code>"
-        f"- 💰 Buy amount: <code>{args.amount_for_each_buy}</code>"
-        f"- 📈 Strategy type: <code>{args.strategy_type}</code>"
-        f"- 📉 Price range low: <code>{args.price_range_low}</code>"
-        f"- 📈 Price range high: <code>{args.price_range_high}</code>"
+        "<u>🤖 Starting RSI ping pong strategy 🏓</u>\n\n"
+        f"📝 CA: <code>{args.contract_address}</code>\n"
+        f"🏊 Pool: <code>{args.pool_address}</code>\n" 
+        f"⏱️ RSI timeframe: <code>{args.timeframe}</code>\n"
+        f"📊 RSI period: <code>{args.period}</code>\n"
+        f"💰 Buy amount: <code>{args.amount_for_each_buy}</code>\n"
+        f"📈 Strategy type: <code>{args.strategy_type}</code>\n"
     )
     message_to_send += (
-        f"- 🔢 Custom RSI for buy: <code>{args.rsi_for_custom_strategy_buy}</code>"
-        f"- 🔢 Custom RSI for sell: <code>{args.rsi_for_custom_strategy_sell}</code>") if args.strategy_type == 'custom' else ''
+        f"📉 Price range low: <code>{args.price_range_low}</code>\n"
+    ) if args.price_range_low is not None else ''
+    message_to_send += (
+        f"📈 Price range high: <code>{args.price_range_high}</code>\n"
+    ) if args.price_range_high is not None else ''
+    message_to_send += (
+        f"🔢 Custom RSI for buy: <code>{args.rsi_for_custom_strategy_buy}</code>"
+        f"🔢 Custom RSI for sell: <code>{args.rsi_for_custom_strategy_sell}</code>") if args.strategy_type == 'custom' else ''
     
     await send_message(message_to_send)
     if args.strategy_type == 'custom':
