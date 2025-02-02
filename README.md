@@ -31,6 +31,14 @@ CDP_API_KEY_NAME=your-api-key-name
 CDP_API_KEY_PRIVATE_KEY=your-api-key-private-key
 ```
 
+after doing this, you need to create a wallet, which you can do with the create_wallet.py script.
+
+```bash
+python create_wallet.py
+```
+
+after doing so, it is highly recommended to save a backup of the wallet.json file in a secure location, as it contains the private key of your wallet.
+
 ### OpenAI API Key
 
 Create an account on OpenAI and create an API key.
