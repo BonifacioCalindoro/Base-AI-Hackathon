@@ -2,9 +2,16 @@
 
 This is an AI agent that can be used to trade on the blockchain. It is built using CDP Agentkit and langchain, and leverages Telegram for communication with the user and FastAPI to handle the RSI auto trading strategy backend.
 
-## Installation
+## Installation and Setup
 
 ```bash
+git clone https://github.com/BonifacioCalindoro/Base-AI-Hackathon
+cd Base-AI-Hackathon
+```
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
