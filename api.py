@@ -75,18 +75,37 @@ async def send_message(message: str):
         message=message,
         _tags=['api_send_message']
     ):
-        await bot.send_message(chat_id=os.getenv('REPORTS_CHAT_ID'), text=message, parse_mode='HTML')
+        message_object = await bot.send_message(chat_id=os.getenv('REPORTS_CHAT_ID'), text=message, parse_mode='HTML')
         logfire.info(
             f"Message sent to Telegram",
             message=message,
+            message_id=message_object.message_id,
             _tags=['api_send_message_success'])
+    return message_object
+
+async def edit_message(message_id: int, message: str):
+    with logfire.span(
+        f"Editing message in Telegram",
+        message=message,
+        message_id=message_id,
+        _tags=['api_edit_message']
+    ):
+        await bot.edit_message_text(chat_id=os.getenv('REPORTS_CHAT_ID'), message_id=message_id, text=message, parse_mode='HTML')
+
+async def pin_message(message_id: int):
+    await bot.pin_chat_message(chat_id=os.getenv('REPORTS_CHAT_ID'), message_id=message_id)
+
+async def unpin_message(message_id: int):
+    await bot.unpin_chat_message(chat_id=os.getenv('REPORTS_CHAT_ID'), message_id=message_id)
 
 async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
     global global_strategy_runners
     rsi_list = []
     already_bought = False
     already_sold = True
+    buys, sells, current_profit = 0, 0, 0
     last_bought = 0
+    current_message = ""
     global_strategy_runners[strategy_id] = True
     logfire.info(
         f"Starting RSI strategy with ID: {strategy_id}",
@@ -111,8 +130,9 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
     message_to_send += (
         f"🔢 Custom RSI for buy: <code>{args.rsi_for_custom_strategy_buy}</code>\n"
         f"🔢 Custom RSI for sell: <code>{args.rsi_for_custom_strategy_sell}</code>") if args.strategy_type == 'custom' else ''
-    
-    await send_message(message_to_send)
+    current_message = message_to_send
+    message_object = await send_message(message_to_send)
+    await pin_message(message_object.message_id)
     if args.strategy_type == 'custom':
         buy_rsi = args.rsi_for_custom_strategy_buy
         sell_rsi = args.rsi_for_custom_strategy_sell
@@ -121,7 +141,9 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
         sell_rsi = strategies_to_rsi_mappigs[args.strategy_type]['sell']
     while True:
         if global_strategy_runners[strategy_id] is False:
+            current_message = current_message + "\n🛑 Strategy stopped"
             await send_message(f"🤖 Strategy stopped")
+            await edit_message(message_object.message_id, current_message)
             break
         current_rsi, ohlcv_data = get_ohlcv_data_and_calculate_rsi_with_ohlcv(args.pool_address, args.timeframe, args.period)
         if args.price_range_low is not None:
@@ -133,6 +155,8 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                     price=ohlcv_data.data.attributes.ohlcv_list[-1][4],
                     _tags=['rsi_stop', 'out_of_range_low'])
                 await send_message(f"🤖 Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\n🤖 Strategy {strategy_id} stopped")
+                current_message = current_message + "\n\n🤖 Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\n🤖 Strategy {strategy_id} stopped"
+                await edit_message(message_object.message_id, current_message)
                 break
         if args.price_range_high is not None:
             if ohlcv_data.data.attributes.ohlcv_list[-1][4] > args.price_range_high:
@@ -143,6 +167,8 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                     price=ohlcv_data.data.attributes.ohlcv_list[-1][4],
                     _tags=['rsi_stop', 'out_of_range_high'])
                 await send_message(f"🤖 Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\n🤖 Strategy {strategy_id} stopped")
+                current_message = current_message + "\n\n🤖 Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\n🤖 Strategy {strategy_id} stopped"
+                await edit_message(message_object.message_id, current_message)
                 break
         logfire.info(
             f"Current RSI: {current_rsi.rsi}",
@@ -187,7 +213,15 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                         _tags=['rsi_buy_result'])
                     already_bought = True
                     already_sold = False
+                    buys += 1
                     await send_message(f"🤖 Bought <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>")
+                    if 'Buys: ' in current_message:
+                        buys_part = current_message.split('Buys: ')[1].split('\n')[0]
+                        current_message = current_message.replace('Buys: ' + buys_part, f'Buys: {buys}')
+                    else:
+                        current_message = current_message + f"\n\n🤖 Buys: {buys}"
+                    await edit_message(message_object.message_id, current_message)
+
                 except Exception as e:
                     logfire.error(
                         f"Error buying {args.contract_address}: {e}",
@@ -195,6 +229,8 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                         strategy_id=strategy_id,
                         _tags=['rsi_buy_error'])
                     await send_message(f"🤖 Error buying <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped")
+                    current_message = current_message + "\n\n🤖 Error buying <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped"
+                    await edit_message(message_object.message_id, current_message)
                     global_strategy_runners[strategy_id] = False
                     return
                     #raise e
@@ -211,7 +247,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                         from_asset_id=args.contract_address,
                         to_asset_id="eth"
                     )
-                    got_profit = result.to_amount - args.amount_for_each_buy
+                    got_profit = float(result.to_amount) - float(args.amount_for_each_buy)
                     tx_hash = result.transaction.transaction_hash
                     logfire.info(
                         f"Trade result: {result}",
@@ -223,7 +259,14 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                         _tags=['rsi_sell_result'])
                     already_sold = True
                     already_bought = False
-                    await send_message(f"🤖 Sold <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>\n- 💰 Profit: <b>{got_profit}</b> ETH")
+                    await send_message(f"🤖 Sold <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>\n\n💰 Profit: <b>{got_profit}</b> ETH")
+                    sells += 1
+                    if 'Sells: ' in current_message:
+                        sells_part = current_message.split('Sells: ')[1].split('\n')[0]
+                        current_message = current_message.replace('Sells: ' + sells_part, f'Sells: {sells}')
+                    else:
+                        current_message = current_message + f"\n🤖 Sells: {sells}"
+                    await edit_message(message_object.message_id, current_message)
                 except Exception as e:
                     logfire.error(
                         f"Error selling {args.contract_address}: {e}",
@@ -231,6 +274,8 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                         strategy_id=strategy_id,
                         _tags=['rsi_sell_error'])
                     await send_message(f"🤖 Error selling <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped")
+                    current_message = current_message + "\n\n🤖 Error selling <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped"
+                    await edit_message(message_object.message_id, current_message)
                     global_strategy_runners[strategy_id] = False
                     return
                     #raise e
