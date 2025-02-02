@@ -99,7 +99,7 @@ Hello, I want to sell all my USDC for ETH
 And it would sell all the USDC in its wallet for ETH.
 
 ```
-Hey, i want you to find a good pool for this contract address: 0x4f9fd6be4a90f2620860d680c0d4d5fb53d1a825
+Hey, i want you to find a good pool for this contract address: 0x0555e30da8f98308edb960aa94c0db47230d2b9c
 
 Then open an aggressive rsi with 0.0001ETH per buy, on 15m timeframes
 ```
