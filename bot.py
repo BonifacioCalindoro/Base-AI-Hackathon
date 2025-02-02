@@ -11,7 +11,9 @@ import logfire
 
 logfire.configure(
     token=os.getenv('LOGFIRE_TOKEN'),
-    project_name='telegram_bot'
+    service_name='telegram_bot',
+    send_to_logfire='if-token-present',
+    scrubbing=False
 )
 
 logging.basicConfig(

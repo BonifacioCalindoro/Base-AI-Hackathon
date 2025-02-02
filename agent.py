@@ -19,7 +19,9 @@ import logfire
 
 logfire.configure(
     token=os.getenv('LOGFIRE_TOKEN'),
-    project_name='ai_agent'
+    service_name='ai_agent',
+    send_to_logfire='if-token-present',
+    scrubbing=False
 )
 
 # Configure a file to persist the agent's CDP MPC Wallet Data.
