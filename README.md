@@ -1,4 +1,4 @@
-#AI Blockchain Agent
+# AI Blockchain Agent
 
 This is an AI agent that can be used to trade on the blockchain. It is built using CDP Agentkit and langchain, and leverages Telegram for communication with the user and FastAPI to handle the RSI auto trading strategy backend.
 
