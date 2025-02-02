@@ -109,7 +109,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
         f"📈 Price range high: <code>{args.price_range_high}</code>\n"
     ) if args.price_range_high is not None else ''
     message_to_send += (
-        f"🔢 Custom RSI for buy: <code>{args.rsi_for_custom_strategy_buy}</code>"
+        f"🔢 Custom RSI for buy: <code>{args.rsi_for_custom_strategy_buy}</code>\n"
         f"🔢 Custom RSI for sell: <code>{args.rsi_for_custom_strategy_sell}</code>") if args.strategy_type == 'custom' else ''
     
     await send_message(message_to_send)
