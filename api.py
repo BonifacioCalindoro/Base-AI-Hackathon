@@ -8,6 +8,13 @@ from dotenv import load_dotenv
 import json
 from cdp_langchain.utils import CdpAgentkitWrapper
 from telegram import Bot
+import logfire
+
+logfire.configure(
+    token=os.getenv('LOGFIRE_TOKEN'),
+    service_name='rsi-backend',
+    scrubbing=False
+)
 
 load_dotenv()
 
@@ -69,7 +76,11 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
     already_sold = True
     last_bought = 0
     global_strategy_id = strategy_id
-    print(f"Starting RSI strategy with ID: {global_strategy_id}")
+    logfire.info(
+        f"Starting RSI strategy with ID: {global_strategy_id}",
+        args=args,
+        strategy_id=global_strategy_id,
+        _tags=['rsi_start'])
     await send_message(f"Starting RSI strategy with parameters:\ncontract_address: {args.contract_address}\npool_address: {args.pool_address}\ntimeframe: {args.timeframe}\nrsi period: {args.period}\namount_for_each_buy: {args.amount_for_each_buy}\nstrategy_type: {args.strategy_type}\nprice_range_low: {args.price_range_low}\nprice_range_high: {args.price_range_high}\nrsi_for_custom_strategy_buy: {args.rsi_for_custom_strategy_buy}\nrsi_for_custom_strategy_sell: {args.rsi_for_custom_strategy_sell}")
     if args.strategy_type == 'custom':
         buy_rsi = args.rsi_for_custom_strategy_buy
@@ -81,19 +92,36 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
         if global_strategy_id is None:
             await send_message(f"Strategy stopped")
             break
-        print(f"Running RSI strategy with ID: {global_strategy_id}")
         current_rsi, ohlcv_data = get_ohlcv_data_and_calculate_rsi_with_ohlcv(args.pool_address, args.timeframe, args.period)
         if args.price_range_low is not None:
             if ohlcv_data.data.attributes.ohlcv_list[-1][4] < args.price_range_low:
                 print(f"Price out of range for {args.contract_address}")
+                logfire.info(
+                    f"Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]}). Strategy {global_strategy_id} stopped",
+                    args=args,
+                    strategy_id=global_strategy_id,
+                    price=ohlcv_data.data.attributes.ohlcv_list[-1][4],
+                    _tags=['rsi_stop', 'out_of_range_low'])
                 await send_message(f"Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\nStrategy {global_strategy_id} stopped")
                 break
         if args.price_range_high is not None:
             if ohlcv_data.data.attributes.ohlcv_list[-1][4] > args.price_range_high:
                 print(f"Price out of range for {args.contract_address}")
+                logfire.info(
+                    f"Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]}). Strategy {global_strategy_id} stopped",
+                    args=args,
+                    strategy_id=global_strategy_id,
+                    price=ohlcv_data.data.attributes.ohlcv_list[-1][4],
+                    _tags=['rsi_stop', 'out_of_range_high'])
                 await send_message(f"Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\nStrategy {global_strategy_id} stopped")
                 break
         print(f"Current RSI: {current_rsi.rsi}")
+        logfire.info(
+            f"Current RSI: {current_rsi.rsi}",
+            args=args,
+            strategy_id=global_strategy_id,
+            rsi=current_rsi.rsi,
+            _tags=['rsi_current'])
         rsi_list.append(current_rsi.rsi)
         if len(rsi_list) > 1 and rsi_list[-2] > rsi_list[-1]:
             direction = 'down'
@@ -101,43 +129,85 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
             direction = 'up'
         else:
             direction = 'neutral'
-        print(f"Direction: {direction}")
+        logfire.info(
+            f"Direction: {direction}",
+            args=args,
+            strategy_id=global_strategy_id,
+            direction=direction,
+            _tags=['rsi_direction'])
         if rsi_list[-1] < buy_rsi and not already_bought:
             print(f"Buying {args.contract_address}")
-            try:
-                result = wallet.trade(
-                    amount=args.amount_for_each_buy,
-                    from_asset_id="ETH",
-                    to_asset_id=args.contract_address
-                )
-                last_bought = result.to_amount
-                tx_hash = result.transaction.transaction_hash
-                print(f"Trade result: {result}")
-                await send_message(f"Bought <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>")
-            except Exception as e:
-                print(f"Error buying {args.contract_address}: {e}")
-                await send_message(f"Error buying <code>{args.contract_address}</code>: {e}")
-                #raise e
-            already_bought = True
-            already_sold = False
+            with logfire.span(
+                f"Buying {args.contract_address}",
+                args=args,
+                strategy_id=global_strategy_id,
+                _tags=['rsi_buy']
+            ):
+                try:
+                    result = wallet.trade(
+                        amount=args.amount_for_each_buy,
+                        from_asset_id="ETH",
+                        to_asset_id=args.contract_address
+                    )
+                    last_bought = result.to_amount
+                    tx_hash = result.transaction.transaction_hash
+                    print(f"Trade result: {result}")
+                    logfire.info(
+                        f"Trade result: {result}",
+                        args=args,
+                        strategy_id=global_strategy_id,
+                        amount=last_bought,
+                        tx_hash=tx_hash,
+                        _tags=['rsi_buy_result'])
+                    already_bought = True
+                    already_sold = False
+                    await send_message(f"Bought <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>")
+                except Exception as e:
+                    print(f"Error buying {args.contract_address}: {e}")
+                    logfire.error(
+                        f"Error buying {args.contract_address}: {e}",
+                        args=args,
+                        strategy_id=global_strategy_id,
+                        _tags=['rsi_buy_error'])
+                    await send_message(f"Error buying <code>{args.contract_address}</code>: {e}")
+                    #raise e
         elif rsi_list[-1] > sell_rsi and not already_sold:
             print(f"Selling {args.contract_address}")
-            try:
-                result = wallet.trade(
-                    amount=last_bought,
-                    from_asset_id=args.contract_address,
-                    to_asset_id="ETH"
-                )
-                print(f"Trade result: {result}")
-                got_profit = result.to_amount - args.amount_for_each_buy
-                tx_hash = result.transaction.transaction_hash
-                await send_message(f"Sold <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>\nProfit: <b>{got_profit}</b> ETH")
-            except Exception as e:
-                print(f"Error selling {args.contract_address}: {e}")
-                await send_message(f"Error selling <code>{args.contract_address}</code>: {e}")
-                #raise e
-            already_sold = True
-            already_bought = False
+            with logfire.span(
+                f"Selling {args.contract_address}",
+                args=args,
+                strategy_id=global_strategy_id,
+                _tags=['rsi_sell']
+            ):
+                try:
+                    result = wallet.trade(
+                        amount=last_bought,
+                        from_asset_id=args.contract_address,
+                        to_asset_id="ETH"
+                    )
+                    print(f"Trade result: {result}")
+                    got_profit = result.to_amount - args.amount_for_each_buy
+                    tx_hash = result.transaction.transaction_hash
+                    logfire.info(
+                        f"Trade result: {result}",
+                        args=args,
+                        strategy_id=global_strategy_id,
+                        amount=last_bought,
+                        profit=got_profit,
+                        tx_hash=tx_hash,
+                        _tags=['rsi_sell_result'])
+                    already_sold = True
+                    already_bought = False
+                    await send_message(f"Sold <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>\nProfit: <b>{got_profit}</b> ETH")
+                except Exception as e:
+                    print(f"Error selling {args.contract_address}: {e}")
+                    logfire.error(
+                        f"Error selling {args.contract_address}: {e}",
+                        args=args,
+                        strategy_id=global_strategy_id,
+                        _tags=['rsi_sell_error'])
+                    await send_message(f"Error selling <code>{args.contract_address}</code>: {e}")
+                    #raise e
         else:
             print(f"No action needed for {args.contract_address}")
         await asyncio.sleep(10)
@@ -146,14 +216,27 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str):
 @app.post("/start_rsi_strategy")
 async def start_rsi_strategy(args: StartRSIArgs, background_tasks: BackgroundTasks):
     background_tasks.add_task(rsi_runner, args, 'ping pong')
+    logfire.info(
+        f"Starting RSI strategy with ID: ping pong",
+        args=args,
+        strategy_id='ping pong',
+        _tags=['api_start_rsi_strategy'])
     return StartRSIResponse(strategy_id='ping pong', success=True).model_dump()
 
 @app.post("/stop_rsi_strategy")
 async def stop_rsi_strategy(args: StopRSIArgs, background_tasks: BackgroundTasks):
     global global_strategy_id
     print(f"Stopping RSI strategy with ID: {global_strategy_id}")
+    logfire.info(
+        f"Stopping RSI strategy with ID: {global_strategy_id}",
+        args=args,
+        strategy_id=global_strategy_id,
+        _tags=['api_stop_rsi_strategy'])
     global_strategy_id = None
     return StopRSIResponse(success=True).model_dump()
 
 if __name__ == "__main__":
+    logfire.info(
+        f"Starting API",
+        _tags=['api_start'])
     uvicorn.run(app, host="localhost", port=42069)
