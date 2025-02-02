@@ -53,6 +53,54 @@ def get_ohlcv_data_and_calculate_rsi(pool_address: str, timeframe: Literal['1m',
     
     return RSIResponse(rsi=rsi)
 
+def get_ohlcv_data_and_calculate_rsi_with_ohlcv(pool_address: str, timeframe: Literal['1m', '5m', '15m', '30m', '1h', '4h', '12h', '1d'], period: int = 14) -> RSIResponse:
+    """
+    Get OHLCV data and calculate the Relative Strength Index (RSI).
+    
+    Args:
+        pool_address: The address of the pool to get OHLCV data for
+        timeframe: The timeframe to get OHLCV data for
+        period: The period over which to calculate RSI (default 14)
+        
+    Returns:
+        The RSI value for the most recent period
+    """
+    ohlcv_data = get_ohlcv_data(pool_address, timeframe)
+
+    # Reverse the OHLCV list to have most recent data first
+    ohlcv_data.data.attributes.ohlcv_list.reverse()
+
+    if len(ohlcv_data.data.attributes.ohlcv_list) < period + 1:
+        raise ValueError(f"Not enough data points. Need at least {period + 1} data points.")
+
+    # Get closing prices
+    closes = [float(candle[4]) for candle in ohlcv_data.data.attributes.ohlcv_list]
+    
+    # Calculate price changes
+    deltas = [closes[i] - closes[i-1] for i in range(1, len(closes))]
+    
+    # Separate gains and losses
+    gains = [delta if delta > 0 else 0 for delta in deltas]
+    losses = [-delta if delta < 0 else 0 for delta in deltas]
+    
+    # Calculate average gains and losses
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+    
+    # Calculate subsequent values
+    for i in range(period, len(deltas)):
+        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+    
+    # Calculate RS and RSI
+    if avg_loss == 0:
+        return 100
+    
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    
+    return RSIResponse(rsi=rsi), ohlcv_data
+
 RSI_Action = CdpAction(
     name="get_ohlcv_data_and_calculate_rsi",
     description="Get OHLCV data and calculate the Relative Strength Index (RSI) for a given OHLCV dataset",

@@ -1,0 +1,158 @@
+from fastapi import FastAPI, BackgroundTasks
+import uvicorn 
+from models.trading_strategies import StartRSIArgs, StopRSIArgs, StartRSIResponse, StopRSIResponse
+import asyncio
+from tools.trading_indicators import get_ohlcv_data_and_calculate_rsi_with_ohlcv
+import os
+from dotenv import load_dotenv
+import json
+from cdp_langchain.utils import CdpAgentkitWrapper
+from telegram import Bot
+
+load_dotenv()
+
+bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
+
+app = FastAPI()
+
+global_strategy_id = None
+
+strategies_to_rsi_mappigs = {
+    'aggressive': {
+        'buy': 35,
+        'sell': 65
+    },
+    'medium': {
+        'buy': 30,
+        'sell': 70
+    },
+    'conservative': {
+        'buy': 25,
+        'sell': 75
+    }
+}
+
+wallet_data_file = 'wallet.json'
+
+wallet_data = None
+
+if os.path.exists(wallet_data_file):
+    with open(wallet_data_file) as f:
+        wallet_data = f.read()
+
+with open('.env', 'r') as f:
+    for line in f:
+        if line.startswith('CDP_API_KEY_PRIVATE_KEY='):
+            raw_key = line[len('CDP_API_KEY_PRIVATE_KEY='):].strip() # This was necessary because python-dotenv was not able to parse the key correctly
+            break
+    
+values = {
+    "cdp_api_key_name": os.getenv("CDP_API_KEY_NAME"),
+    "cdp_api_key_private_key": raw_key.replace('\\n', '\n'),
+}
+
+if wallet_data is not None:
+    values["cdp_wallet_data"] = wallet_data
+else:
+    raise Exception("No wallet data found")
+
+agentkit = CdpAgentkitWrapper(**values)
+wallet = agentkit.wallet
+
+async def send_message(message: str):
+    await bot.send_message(chat_id=os.getenv('REPORTS_CHAT_ID'), text=message, parse_mode='HTML')
+
+async def rsi_runner(args: StartRSIArgs, strategy_id: str):
+    global global_strategy_id
+    rsi_list = []
+    already_bought = False
+    already_sold = True
+    last_bought = 0
+    global_strategy_id = strategy_id
+    print(f"Starting RSI strategy with ID: {global_strategy_id}")
+    if args.strategy_type == 'custom':
+        buy_rsi = args.rsi_for_custom_strategy_buy
+        sell_rsi = args.rsi_for_custom_strategy_sell
+    else:
+        buy_rsi = strategies_to_rsi_mappigs[args.strategy_type]['buy']
+        sell_rsi = strategies_to_rsi_mappigs[args.strategy_type]['sell']
+    while True:
+        if global_strategy_id is None:
+            await send_message(f"Strategy stopped")
+            break
+        print(f"Running RSI strategy with ID: {global_strategy_id}")
+        current_rsi, ohlcv_data = get_ohlcv_data_and_calculate_rsi_with_ohlcv(args.pool_address, args.timeframe, args.period)
+        if args.price_range_low is not None:
+            if ohlcv_data.data.attributes.ohlcv_list[-1][4] < args.price_range_low:
+                print(f"Price out of range for {args.contract_address}")
+                await send_message(f"Price out of range (low) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\nStrategy {global_strategy_id} stopped")
+                break
+        if args.price_range_high is not None:
+            if ohlcv_data.data.attributes.ohlcv_list[-1][4] > args.price_range_high:
+                print(f"Price out of range for {args.contract_address}")
+                await send_message(f"Price out of range (high) for {args.contract_address} ({ohlcv_data.data.attributes.ohlcv_list[-1][4]})\nStrategy {global_strategy_id} stopped")
+                break
+        print(f"Current RSI: {current_rsi.rsi}")
+        rsi_list.append(current_rsi.rsi)
+        if len(rsi_list) > 1 and rsi_list[-2] > rsi_list[-1]:
+            direction = 'down'
+        elif len(rsi_list) > 1 and rsi_list[-2] < rsi_list[-1]:
+            direction = 'up'
+        else:
+            direction = 'neutral'
+        print(f"Direction: {direction}")
+        if rsi_list[-1] < buy_rsi and not already_bought:
+            print(f"Buying {args.contract_address}")
+            try:
+                result = wallet.trade(
+                    amount=args.amount_for_each_buy,
+                    from_asset_id="ETH",
+                    to_asset_id=args.contract_address
+                )
+                last_bought = result.to_amount
+                tx_hash = result.transaction.transaction_hash
+                print(f"Trade result: {result}")
+                await send_message(f"Bought <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>")
+            except Exception as e:
+                print(f"Error buying {args.contract_address}: {e}")
+                await send_message(f"Error buying <code>{args.contract_address}</code>: {e}")
+                #raise e
+            already_bought = True
+            already_sold = False
+        elif rsi_list[-1] > sell_rsi and not already_sold:
+            print(f"Selling {args.contract_address}")
+            try:
+                result = wallet.trade(
+                    amount=last_bought,
+                    from_asset_id=args.contract_address,
+                    to_asset_id="ETH"
+                )
+                print(f"Trade result: {result}")
+                got_profit = result.to_amount - args.amount_for_each_buy
+                tx_hash = result.transaction.transaction_hash
+                await send_message(f"Sold <b>{last_bought}</b> of <code>{args.contract_address}</code> with tx hash <code>{tx_hash}</code>\nProfit: <b>{got_profit}</b> ETH")
+            except Exception as e:
+                print(f"Error selling {args.contract_address}: {e}")
+                await send_message(f"Error selling <code>{args.contract_address}</code>: {e}")
+                #raise e
+            already_sold = True
+            already_bought = False
+        else:
+            print(f"No action needed for {args.contract_address}")
+        await asyncio.sleep(10)
+        
+
+@app.post("/start_rsi_strategy")
+async def start_rsi_strategy(args: StartRSIArgs, background_tasks: BackgroundTasks):
+    background_tasks.add_task(rsi_runner, args, 'ping pong')
+    return StartRSIResponse(strategy_id='ping pong', success=True).model_dump()
+
+@app.post("/stop_rsi_strategy")
+async def stop_rsi_strategy(args: StopRSIArgs, background_tasks: BackgroundTasks):
+    global global_strategy_id
+    print(f"Stopping RSI strategy with ID: {global_strategy_id}")
+    global_strategy_id = None
+    return StopRSIResponse(success=True).model_dump()
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="localhost", port=42069)

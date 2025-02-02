@@ -9,7 +9,7 @@ class TokenInfo(BaseModel):
     address: str
     name: str
     symbol: str
-    coingecko_coin_id: str
+    coingecko_coin_id: str|None = None
 
 class OHLCVMeta(BaseModel):
     base: TokenInfo

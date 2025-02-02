@@ -11,6 +11,7 @@ from langgraph.prebuilt import create_react_agent
 from tools.ohlcv import get_ohlcv_data_tool
 from tools.trending_pools import get_trending_pools_tool
 from tools.trading_indicators import get_ohlcv_data_and_calculate_rsi_tool, get_ohlcv_data_and_calculate_macd_tool
+from tools.trading_strategies import start_rsi_strategy_tool, stop_rsi_strategy_tool
 # Import CDP Agentkit Langchain Extension.
 from cdp_langchain.agent_toolkits import CdpToolkit
 from cdp_langchain.utils import CdpAgentkitWrapper
@@ -32,12 +33,22 @@ def initialize_agent():
     if os.path.exists(wallet_data_file):
         with open(wallet_data_file) as f:
             wallet_data = f.read()
-
+            
     # Configure CDP Agentkit Langchain Extension.
-    values = {}
+    with open('.env', 'r') as f:
+        for line in f:
+            if line.startswith('CDP_API_KEY_PRIVATE_KEY='):
+                raw_key = line[len('CDP_API_KEY_PRIVATE_KEY='):].strip()
+                break
+    
+    values = {
+        "cdp_api_key_name": os.getenv("CDP_API_KEY_NAME"),
+        "cdp_api_key_private_key": raw_key.replace('\\n', '\n'),
+    }
+    
     if wallet_data is not None:
         # If there is a persisted agentic wallet, load it and pass to the CDP Agentkit Wrapper.
-        values = {"cdp_wallet_data": wallet_data}
+        values["cdp_wallet_data"] = wallet_data
 
     agentkit = CdpAgentkitWrapper(**values)
 
@@ -54,6 +65,8 @@ def initialize_agent():
     tools.append(get_ohlcv_data_and_calculate_rsi_tool(agentkit))
     tools.append(get_ohlcv_data_and_calculate_macd_tool(agentkit))
     tools.append(search_pools_tool(agentkit))
+    tools.append(start_rsi_strategy_tool(agentkit))
+    tools.append(stop_rsi_strategy_tool(agentkit))
     for tool in tools:
         print(tool.name)
 

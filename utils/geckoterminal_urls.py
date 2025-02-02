@@ -27,8 +27,8 @@ def get_token_price_url(token: str):
 def get_pools_url(pool_address: str):
     return f"{base_url}/networks/base/pools/{pool_address}"
 
-def get_token_info_url(token_address: str):
-    return f"{base_url}/networks/base/tokens/{token_address}"
+def get_token_info_url(contract_address: str):
+    return f"{base_url}/networks/base/tokens/{contract_address}"
 
 def search_pools_with_query(query: str):
     return f"{base_url}/search/pools?query={query}&network=base"
