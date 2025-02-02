@@ -90,17 +90,28 @@ To interact with the agent, just start sending a message to it or send a voice m
 ```
 Hello, I want to buy USDC with 0.001 ETH
 ```
+And it would buy USDC with 0.001 ETH.
+
 
 ```
 Hello, I want to sell all my USDC for ETH
 ```
+And it would sell all the USDC in its wallet for ETH.
 
 ```
 Hey, i want you to find a good pool for this contract address: 0x4f9fd6be4a90f2620860d680c0d4d5fb53d1a825
 
 Then open an aggressive rsi with 0.0001ETH per buy, on 15m timeframes
 ```
+And it would start the rsi strategy with those parameters.
 
 ```
 Close the rsi now
 ```
+And it would stop the rsi strategy.
+
+
+```
+Can you buy SuperAgent42.base.eth for me?
+```
+And it would claim the BaseName and mint it to its wallet.
