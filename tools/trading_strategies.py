@@ -1,7 +1,7 @@
 from cdp_langchain.tools import CdpTool
 from cdp_agentkit_core.actions.cdp_action import CdpAction
 from typing import Literal
-from models.trading_strategies import StartRSIArgs, StartRSIResponse, StopRSIArgs, StopRSIResponse, GetRSIStatusArgs, GetRSIStatusResponse
+from models.trading_strategies import StartRSIArgs, StartRSIResponse, StopRSIArgs, StopRSIResponse
 import requests
 
 def start_rsi_strategy(
@@ -17,10 +17,10 @@ def start_rsi_strategy(
     rsi_for_custom_strategy_sell: int|None = None,
 ) -> StartRSIResponse:
     """
-    Start an RSI strategy for a given token. If the user does not provide all the data, you will need to ask for it.
+    Start an RSI strategy for a given token. If the user does not provide all the data, you will need to ask for it or use the tools at your disposal to get it.
     
     Args:
-        pool_address: The address of the pool to start the strategy for
+        pool_address: The address of the pool to start the strategy for. If user does not provide this, you will need to search for it using the tools at your disposal.
         contract_address: The address of the token to start the strategy for. If user does not provide this, you will need to search for it using the tools at your disposal.
         timeframe: The timeframe to use for the strategy
         amount_for_each_buy: The amount of the token to buy on each buy
@@ -50,7 +50,7 @@ def start_rsi_strategy(
 
 StartRSI_Action = CdpAction(
     name="start_rsi_strategy",
-    description="Start an RSI strategy for a given token. If the user does not provide all the data, you will need to ask for it.",
+    description="Start an RSI strategy for a given token. If the user does not provide all the data, you will need to ask for it or use the tools at your disposal to get it.",
     args_schema=StartRSIArgs,
     func=start_rsi_strategy,
 )
