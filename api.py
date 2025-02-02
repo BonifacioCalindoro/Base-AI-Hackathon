@@ -67,7 +67,16 @@ agentkit = CdpAgentkitWrapper(**values)
 wallet = agentkit.wallet
 
 async def send_message(message: str):
-    await bot.send_message(chat_id=os.getenv('REPORTS_CHAT_ID'), text=message, parse_mode='HTML')
+    with logfire.span(
+        f"Sending message to Telegram",
+        message=message,
+        _tags=['api_send_message']
+    ):
+        await bot.send_message(chat_id=os.getenv('REPORTS_CHAT_ID'), text=message, parse_mode='HTML')
+        logfire.info(
+            f"Message sent to Telegram",
+            message=message,
+            _tags=['api_send_message_success'])
 
 async def rsi_runner(args: StartRSIArgs, strategy_id: str):
     global global_strategy_id
