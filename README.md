@@ -15,6 +15,51 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+```bash
+cp .env.example .env
+```
+
+### Coinbase API Key
+
+Create an account on Coinbase Developer Platform and create an API key with all permissions.
+Then, set the following environment variables:
+
+```bash
+CDP_API_KEY_NAME=your-api-key-name
+CDP_API_KEY_PRIVATE_KEY=your-api-key-private-key
+```
+
+### OpenAI API Key
+
+Create an account on OpenAI and create an API key.
+Then, set the following environment variable:
+
+```bash
+OPENAI_API_KEY=your-openai-api-key
+```
+
+### Telegram Bot Token
+
+Create a bot on t.me/BotFather and get the token.
+Then, create a channel/group, add the bot to it and get the chat id (or you can directly use your personal chat id).
+Then, set the following environment variable:
+
+```bash
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+TELEGRAM_CHAT_ID=your-desired-telegram-chat-id
+```
+
+### Logfire Token (Optional)
+
+Create an account on logfire.pydantic.dev, create a new project and get a Write token for it.
+Then, set the following environment variable:
+
+```bash
+LOGFIRE_TOKEN=your-logfire-token
+```
+
 ## Usage
 
 ```bash
@@ -24,11 +69,6 @@ python api.py
 
 both services need to be running to use the agent
 
-## Configuration
-
-```bash
-cp .env.example .env
-```
 
 ## Logging
 
