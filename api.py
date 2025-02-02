@@ -194,7 +194,9 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                         args=args,
                         strategy_id=strategy_id,
                         _tags=['rsi_buy_error'])
-                    await send_message(f"🤖 Error buying <code>{args.contract_address}</code>: {e}")
+                    await send_message(f"🤖 Error buying <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped")
+                    global_strategy_runners[strategy_id] = False
+                    return
                     #raise e
         elif rsi_list[-1] > sell_rsi and not already_sold:
             with logfire.span(
@@ -228,7 +230,9 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                         args=args,
                         strategy_id=strategy_id,
                         _tags=['rsi_sell_error'])
-                    await send_message(f"🤖 Error selling <code>{args.contract_address}</code>: {e}")
+                    await send_message(f"🤖 Error selling <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped")
+                    global_strategy_runners[strategy_id] = False
+                    return
                     #raise e
         else:
             print(f"No action needed for {args.contract_address}")
