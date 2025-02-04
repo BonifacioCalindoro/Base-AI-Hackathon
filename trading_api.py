@@ -309,4 +309,4 @@ if __name__ == "__main__":
     logfire.info(
         f"Starting API",
         _tags=['api_start'])
-    uvicorn.run(app, host="localhost", port=42069)
+    uvicorn.run(app, host="localhost", port=os.getenv('TRADING_API_PORT') or 42069)
