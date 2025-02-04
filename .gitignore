@@ -3,6 +3,7 @@
 venv/
 __pycache__/
 agentkit/
+data/
 wallet.json
 wallet_backup.json
 .DS_Store
