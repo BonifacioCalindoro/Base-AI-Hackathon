@@ -74,6 +74,6 @@ async def get_status():
     }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host='localhost', port=os.getenv("AGENTS_API_PORT") or 42071)
+    uvicorn.run(app, host='localhost', port=int(os.getenv("AGENTS_API_PORT")) or 42071)
 
 

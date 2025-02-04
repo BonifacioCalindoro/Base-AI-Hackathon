@@ -121,7 +121,7 @@ async def get_status(args: GetTwitterStatusArgs):
 if __name__ == "__main__":
     logfire.info("Starting social API", _tags=["social_api"])
     try:
-        uvicorn.run(app, host='localhost', port=os.getenv("SOCIAL_API_PORT") or 42070)
+        uvicorn.run(app, host='localhost', port=int(os.getenv("SOCIAL_API_PORT")) or 42070)
     except KeyboardInterrupt:
         logfire.info("Social API stopped", _tags=["social_api"])
     except Exception as e:
