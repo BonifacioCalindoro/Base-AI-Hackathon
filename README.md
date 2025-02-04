@@ -68,14 +68,31 @@ Then, set the following environment variable:
 LOGFIRE_TOKEN=your-logfire-token
 ```
 
+### Twitter API 
+
+create an X account, go to https://developer.x.com/en/portal/dashboard and create a new project, then create an app and get the credentials.
+Then, set the following environment variables:
+
+```bash
+TWITTER_API_KEY=
+TWITTER_API_SECRET=
+TWITTER_BEARER_TOKEN=
+TWITTER_ACCESS_TOKEN=
+TWITTER_ACCESS_TOKEN_SECRET=
+```
+
+IMPORTANT: even though you don't need to use OAUTH 2.0, you need to edit the app's permissions to read and write to your timeline. It will ask for valid URLs but you can put any valid URL there.
+After doing so, you need to refresh the twitter access tokens and put them in the .env file.
+
 ## Usage
 
 ```bash
 python bot.py
-python api.py
+python trading_api.py
+python social_api.py
 ```
 
-both services need to be running to use the agent
+all services need to be running to use all the features of the agent
 
 ## Logging
 
@@ -115,3 +132,23 @@ And it would stop the rsi strategy.
 Can you buy SuperAgent42.base.eth for me?
 ```
 And it would claim the BaseName and mint it to its wallet.
+
+```
+Start the twitter agent
+```
+And it would start the twitter agent with the default prompt.
+
+```
+Stop the twitter agent
+```
+And it would stop the twitter agent.
+
+```
+Start the twitter agent with prompt "Post on twitter about how cool SuperAssistant is!"
+```
+And it would start the twitter agent with that custom prompt.
+
+```
+Get the status of the twitter agent
+```
+And it would return the status of the twitter agent's latest actions.

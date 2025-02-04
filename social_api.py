@@ -6,6 +6,7 @@ import os
 import asyncio
 from social.twitter.agent import initialize_agent as initialize_twitter_agent
 from social.twitter.agent import check_mentions as check_twitter_mentions, post as post_to_twitter
+from models.twitter import StartTwitterArgs, StopTwitterArgs, GetTwitterStatusArgs
 from dotenv import load_dotenv
 import time
 
@@ -30,7 +31,7 @@ global_prompt = 'Post on twitter about how cool SuperAssistant is!'
 last_time_checked_twitter_mentions = 0
 last_time_posted_on_twitter = 0
 mentions_rate_limit = 60*60*8
-post_rate_limit = 60*60*1.5
+post_rate_limit = 60*60*3
 twitter_agent, config = initialize_twitter_agent()
 responses = {
     "twitter": {
@@ -76,44 +77,44 @@ async def main_loop():
 
 
 @app.post("/start_with_prompt")
-async def start_with_prompt(background_tasks: BackgroundTasks, prompt: str|Literal["default"] = "default", social_network: Literal["twitter"] = "twitter"):
+async def start_with_prompt(args: StartTwitterArgs, background_tasks: BackgroundTasks):
     global running_loop
     global global_prompt
     global running_social
-    global_prompt = prompt if prompt != "default" else global_prompt
+    global_prompt = args.prompt if args.prompt != "default" else global_prompt
     if not running_loop:
         running_loop = True
-        running_social[social_network] = True
+        running_social[args.social_network] = True
         background_tasks.add_task(main_loop)
-        return f"Started {social_network} agent with prompt: {prompt}"
+        return f"Started {args.social_network} agent with prompt: {args.prompt}"
     else:
-        return f"Already running {social_network} agent, changed prompt to: {prompt}"
+        return f"Already running {args.social_network} agent, changed prompt to: {args.prompt}"
     
 @app.post("/stop")
-async def stop_loop(social_network: Literal["twitter", None] = None): # By default (None) will stop bot socials all loops
+async def stop_loop(args: StopTwitterArgs):
     global running_social
     global running_loop
-    if not social_network:
+    if not args.social_network:
         running_loop = False
         running_social = {
             "twitter": False,
         }
     else:
-        running_social[social_network] = False
-    if not running_social["twitter"]:
+        running_social[args.social_network] = False
+    if not running_social[args.social_network]:
         running_loop = False
-    return f"Stopped {social_network}" if social_network else "Stopped all"
+    return f"Stopped {args.social_network}" if args.social_network else "Stopped all"
 
 
 @app.get("/status")
-async def get_status(social_network: Literal["twitter"]):
+async def get_status(args: GetTwitterStatusArgs):
     return {
         "running": running_loop,
         "running_social": running_social,
         "prompt": global_prompt,
-        "last_time_checked_mentions": last_time_checked_twitter_mentions if social_network == "twitter" else None, #already preapred to add more socials
-        "last_time_posted": last_time_posted_on_twitter if social_network == "twitter" else None, #already preapred to add more socials
-        "agent_responses": responses[social_network]
+        "last_time_checked_mentions": last_time_checked_twitter_mentions if args.social_network == "twitter" else None, #already preapred to add more socials
+        "last_time_posted": last_time_posted_on_twitter if args.social_network == "twitter" else None, #already preapred to add more socials
+        "agent_responses": responses[args.social_network]
     }
 
 

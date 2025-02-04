@@ -229,7 +229,7 @@ async def rsi_runner(args: StartRSIArgs, strategy_id: str = 'ping pong'):
                         strategy_id=strategy_id,
                         _tags=['rsi_buy_error'])
                     await send_message(f"🤖 Error buying <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped")
-                    current_message = current_message + "\n\n🤖 Error buying <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped"
+                    current_message = current_message + f"\n\n🤖 Error buying <code>{args.contract_address}</code>: {e}\n🤖 Strategy {strategy_id} stopped"
                     await edit_message(message_object.message_id, current_message)
                     global_strategy_runners[strategy_id] = False
                     return

@@ -3,6 +3,11 @@ from cdp_agentkit_core.actions.cdp_action import CdpAction
 from typing import Literal
 from models.trading_strategies import StartRSIArgs, StartRSIResponse, StopRSIArgs, StopRSIResponse
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def start_rsi_strategy(
     pool_address: str,
@@ -46,7 +51,7 @@ def start_rsi_strategy(
         rsi_for_custom_strategy_buy=rsi_for_custom_strategy_buy,
         rsi_for_custom_strategy_sell=rsi_for_custom_strategy_sell,
     )
-    return requests.post(f"http://localhost:42069/start_rsi_strategy", json=args.model_dump(), timeout=30).json()
+    return requests.post(f"http://localhost:{os.getenv('TRADING_API_PORT')}/start_rsi_strategy", json=args.model_dump(), timeout=30).json()
 
 StartRSI_Action = CdpAction(
     name="start_rsi_strategy",
@@ -74,7 +79,7 @@ def stop_rsi_strategy(strategy_id: str|None = None) -> StopRSIResponse:
     Returns:
         True if the strategy was stopped successfully, otherwise False
     """
-    return requests.post(f"http://localhost:42069/stop_rsi_strategy", json=StopRSIArgs(strategy_id=strategy_id).model_dump(), timeout=30).json()
+    return requests.post(f"http://localhost:{os.getenv('TRADING_API_PORT')}/stop_rsi_strategy", json=StopRSIArgs(strategy_id=strategy_id).model_dump(), timeout=30).json()
 
 StopRSI_Action = CdpAction(
     name="stop_rsi_strategy",
