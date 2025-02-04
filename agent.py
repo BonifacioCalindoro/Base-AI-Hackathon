@@ -9,6 +9,7 @@ from tools.ohlcv import get_ohlcv_data_tool
 from tools.trending_pools import get_trending_pools_tool
 from tools.trading_indicators import get_ohlcv_data_and_calculate_rsi_tool, get_ohlcv_data_and_calculate_macd_tool
 from tools.trading_strategies import start_rsi_strategy_tool, stop_rsi_strategy_tool
+from tools.twitter import start_twitter_agent_tool, stop_twitter_agent_tool, get_twitter_agent_status_tool
 # Import CDP Agentkit Langchain Extension.
 from cdp_langchain.agent_toolkits import CdpToolkit
 from cdp_langchain.utils import CdpAgentkitWrapper
@@ -99,6 +100,9 @@ def initialize_agent():
         tools.append(search_pools_tool(agentkit))
         tools.append(start_rsi_strategy_tool(agentkit))
         tools.append(stop_rsi_strategy_tool(agentkit))
+        tools.append(start_twitter_agent_tool(agentkit))
+        tools.append(stop_twitter_agent_tool(agentkit))
+        tools.append(get_twitter_agent_status_tool(agentkit))
         for tool in tools:
             print(tool.name)
 
@@ -126,6 +130,7 @@ def initialize_agent():
             state_modifier=(
                 "You are a helpful agent that can interact onchain using the Coinbase Developer Platform AgentKit. "
                 "You can use emojis in your responses. Keep a serious but playful tone with the user."
+                "You can also interact with a social network agent using the tools provided."
                 "You are empowered to interact onchain using your tools. If you ever need funds, you can request "
                 "them from the faucet if you are on network ID 'base-sepolia'. If not, you can provide your wallet "
                 "details and request funds from the user. Before executing your first action, get the wallet details "
