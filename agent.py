@@ -103,9 +103,6 @@ def initialize_agent():
         tools.append(start_twitter_agent_tool(agentkit))
         tools.append(stop_twitter_agent_tool(agentkit))
         tools.append(get_twitter_agent_status_tool(agentkit))
-        for tool in tools:
-            print(tool.name)
-
         logfire.info(
             f"Tools initialized",
             tools=tools,

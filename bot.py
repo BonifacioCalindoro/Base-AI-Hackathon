@@ -35,10 +35,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"/start command received",
         user_id=user_id,
         _tags=['bot_start'])
-    if user_id not in os.listdir("data/users") and username != os.getenv('TELEGRAM_ADMIN_USERNAME'):
-        msg = await update.effective_message.reply_text('<i>Creating agent...</i>', parse_mode='HTML')
-        response = await httpx.AsyncClient(timeout=30).post(f"http://localhost:{os.getenv('AGENTS_API_PORT')}/create_user", params={"user_id": user_id})
-        await msg.edit_text('<i>Agent created!</i>\n<i>You can now start a conversation with me.</i>', parse_mode='HTML')
+    if username != os.getenv('TELEGRAM_ADMIN_USERNAME'):
+        if user_id not in os.listdir("data/users"):
+            msg = await update.effective_message.reply_text('<i>Creating agent...</i>', parse_mode='HTML')
+            response = await httpx.AsyncClient(timeout=30).post(f"http://localhost:{os.getenv('AGENTS_API_PORT')}/create_user", params={"user_id": user_id})
+            await msg.edit_text('<i>Agent created!</i>\n<i>You can now start a conversation with me.</i>', parse_mode='HTML')
+        else:
+            await update.message.reply_text('Hi! Say something, I will respond.')
     else:
         await update.message.reply_text('Hi! Say something, I will respond.')
     return 'continue'
@@ -167,11 +170,11 @@ conversation_handler = ConversationHandler(
 #    await update.effective_chat.send_message(f'Your chat id is {update.effective_chat.id}')
 
 def main():
-    application = Application.builder().token(os.getenv('TELEGRAM_BOT_TOKEN')).build()
+    application = Application.builder().token(os.getenv('TELEGRAM_BOT_TOKEN')).connect_timeout(60).read_timeout(60).write_timeout(60).pool_timeout(60).build() #What an ugly line of code, but they say DeprecationWarning so... 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(conversation_handler)
     #application.add_handler(MessageHandler(filters.TEXT, return_chat_id))
-    application.run_polling(timeout=60, read_timeout=60, write_timeout=60, connect_timeout=60, pool_timeout=60)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     logfire.info(
