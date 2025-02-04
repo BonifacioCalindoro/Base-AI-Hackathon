@@ -1,6 +1,8 @@
-# AI Blockchain Agent
+# AI Blockchain Agent for Base
 
 This is an AI agent that can be used to trade on the blockchain. It is built using CDP Agentkit and langchain, and leverages Telegram for communication with the user and FastAPI to handle the RSI auto trading strategy backend.
+
+UPGRADED TO ONE_TO_MANY model! So you can run one instance on the bot, and let other users interact with it through telegram while separating each user's data and wallets.
 
 ## Installation and Setup
 
@@ -57,6 +59,7 @@ Then, set the following environment variable:
 ```bash
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 TELEGRAM_CHAT_ID=your-desired-telegram-chat-id
+TELEGRAM_ADMIN_USERNAME=your-telegram-username
 ```
 
 ### Logfire Token (Optional)
@@ -90,9 +93,44 @@ After doing so, you need to refresh the twitter access tokens and put them in th
 python bot.py
 python trading_api.py
 python social_api.py
+python agents_api.py
 ```
 
-all services need to be running to use all the features of the agent
+all services need to be running to use all the features of the agent. You can use the "screen" apt package to run the services in the background.
+
+```bash
+sudo apt install screen
+```
+
+```bash
+screen -S bot
+python bot.py
+```
+press Ctrl+A + D to detach from the screen.
+
+```bash
+screen -S trading_api
+python trading_api.py
+```
+press Ctrl+A + D to detach from the screen.
+
+```bash
+screen -S social_api
+python social_api.py
+```
+press Ctrl+A + D to detach from the screen.
+
+```bash
+screen -S agents_api
+python agents_api.py
+```
+press Ctrl+A + D to detach from the screen.
+
+To reattach to any screen, just use the following command:
+
+```bash
+screen -r <screen-name>
+```
 
 ## Logging
 
