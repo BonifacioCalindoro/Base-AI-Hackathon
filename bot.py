@@ -3,14 +3,13 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from utils.speech import download_voice_message, transcribe_audio
 from langchain_core.messages import HumanMessage
 from agent import initialize_agent
-
+import httpx
 from dotenv import load_dotenv
 import logging
 import os
 import logfire
 
 load_dotenv()
-
 
 logfire.configure(
     token=os.getenv('LOGFIRE_TOKEN'),
@@ -25,11 +24,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+main_agent_executor, main_agent_config = initialize_agent()
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    print(user_id)
+    username = update.effective_user.username
     logfire.info(
         f"/start command received",
+        user_id=user_id,
         _tags=['bot_start'])
-    await update.message.reply_text('Hi! Say something, I will respond.')
+    if user_id not in os.listdir("data/users") and username != os.getenv('TELEGRAM_ADMIN_USERNAME'):
+        msg = await update.effective_message.reply_text('<i>Creating agent...</i>', parse_mode='HTML')
+        response = await httpx.AsyncClient(timeout=30).post(f"http://localhost:{os.getenv('AGENTS_API_PORT')}/create_user", params={"user_id": user_id})
+        await msg.edit_text('<i>Agent created!</i>\n<i>You can now start a conversation with me.</i>', parse_mode='HTML')
+    else:
+        await update.message.reply_text('Hi! Say something, I will respond.')
     return 'continue'
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -40,59 +51,72 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global agent_executor
-    global config
+    global main_agent_executor
+    global main_agent_config
+    user_id = update.effective_user.id
     with logfire.span(
         f"Handling message",
         _tags=['bot_handle_message']
     ):
         msg = await update.effective_message.reply_html('<i>Thinking...</i>')
-
-        try:
-            # Handle voice messages
-            if update.message.voice:
-                await msg.edit_text('<i>Transcribing audio...</i>', parse_mode='HTML')
-                # Get the voice file
-                voice_file = await update.message.voice.get_file()
-                # Download the voice file
-                voice_path = await download_voice_message(voice_file.file_path)
-                # Transcribe the audio
-                text = await transcribe_audio(voice_path)
-                logfire.info(
-                    f"Transcribed message: {text}",
-                    text=text,
-                    _tags=['bot_transcribe_message'])
-                await msg.edit_text(f'<i>Transcribed: "{text}"</i>\n\n<i>Give me a moment, please...</i>', parse_mode='HTML')
-            else:
-                text = update.effective_message.text
-                logfire.info(
-                    f"Received message: {text}",
-                    text=text,
-                    _tags=['bot_receive_message'])
-
-            for chunk in agent_executor.stream(
-                {"messages": [HumanMessage(content=text)]}, config
-            ):
-                if "agent" in chunk:
-                    result = chunk["agent"]["messages"][0].content
-                    logfire.info(
-                        f"Agent response: {result}",
-                        text=result,
-                        _tags=['bot_agent_response'])
-                elif "tools" in chunk:
-                    print(chunk["tools"]["messages"][0].content)
-                    logfire.info(
-                        f"Tool response: {chunk['tools']['messages'][0].content}",
-                        text=chunk['tools']['messages'][0].content,
-                        _tags=['bot_tool_response'])
+        # Handle voice messages
+        if update.message.voice:
+            await msg.edit_text('<i>Transcribing audio...</i>', parse_mode='HTML')
+            # Get the voice file
+            voice_file = await update.message.voice.get_file()
+            # Download the voice file
+            voice_path = await download_voice_message(voice_file.file_path)
+            # Transcribe the audio
+            text = await transcribe_audio(voice_path)
+            logfire.info(
+                f"Transcribed message: {text}",
+                text=text,
+                user_id=user_id,
+                _tags=['bot_transcribe_message'])
+            await msg.edit_text(f'<i>Transcribed: "{text}"</i>\n\n<i>Give me a moment, please...</i>', parse_mode='HTML')
+        else:
+            text = update.effective_message.text
+            logfire.info(
+                f"Received message: {text}",
+                text=text,
+                user_id=user_id,
+                _tags=['bot_receive_message'])
+        
+        if update.effective_user.username == os.getenv('TELEGRAM_ADMIN_USERNAME'):
+            try:
+                for chunk in main_agent_executor.stream(
+                    {"messages": [HumanMessage(content=text)]}, main_agent_config
+                ):
+                    if "agent" in chunk:
+                        result = chunk["agent"]["messages"][0].content
+                        logfire.info(
+                            f"Agent response: {result}",
+                            text=result,
+                            user_id='ADMIN',
+                            _tags=['bot_agent_response'])
+                    elif "tools" in chunk:
+                        print(chunk["tools"]["messages"][0].content)
+                        logfire.info(
+                            f"Tool response: {chunk['tools']['messages'][0].content}",
+                            text=chunk['tools']['messages'][0].content,
+                            user_id='ADMIN',
+                            _tags=['bot_tool_response'])
             
-        except Exception as e:
-            result = f'Error: {e}. You can try again or use the /cancel command to cancel the conversation.'
-            logfire.error(
-                f"Error: {e}",
+            except Exception as e:
+                result = f'Error: {e}. You can try again or use the /cancel command to cancel the conversation.'
+                logfire.error(
+                    f"Error: {e}",
+                    text=result,
+                    error=e,
+                    user_id='ADMIN',
+                    _tags=['bot_error'])
+        else:
+            result = (await httpx.AsyncClient(timeout=120).post(f"http://localhost:{os.getenv('AGENTS_API_PORT')}/prompt", params={"user_id": user_id, "prompt": text})).json()
+            logfire.info(
+                f"Agent response: {result}",
                 text=result,
-                error=e,
-                _tags=['bot_error'])
+                user_id=user_id,
+                _tags=['bot_agent_response'])
         
         await msg.edit_text(result, parse_mode='markdown', disable_web_page_preview=True)
         logfire.info(
@@ -120,13 +144,12 @@ conversation_handler = ConversationHandler(
     allow_reentry=False
 )
 
-agent_executor, config = initialize_agent()
-
 #async def return_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #    await update.effective_chat.send_message(f'Your chat id is {update.effective_chat.id}')
 
 def main():
     application = Application.builder().token(os.getenv('TELEGRAM_BOT_TOKEN')).build()
+    application.add_handler(CommandHandler('start', start))
     application.add_handler(conversation_handler)
     #application.add_handler(MessageHandler(filters.TEXT, return_chat_id))
     application.run_polling(timeout=60, read_timeout=60, write_timeout=60, connect_timeout=60, pool_timeout=60)

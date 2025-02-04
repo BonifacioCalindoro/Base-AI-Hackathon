@@ -60,6 +60,7 @@ mdurl==0.1.2
 msgpack==1.1.0
 multidict==6.1.0
 numpy==2.2.2
+oauthlib==3.2.2
 openai==1.61.0
 opentelemetry-api==1.29.0
 opentelemetry-exporter-otlp-proto-common==1.29.0
@@ -88,6 +89,7 @@ pyunormalize==16.0.0
 PyYAML==6.0.2
 regex==2024.11.6
 requests==2.32.3
+requests-oauthlib==2.0.0
 requests-toolbelt==1.0.0
 rich==13.9.4
 rlp==4.0.1
@@ -99,6 +101,7 @@ tenacity==9.0.0
 tiktoken==0.8.0
 toolz==1.0.0
 tqdm==4.67.1
+tweepy==4.15.0
 types-requests==2.32.0.20241016
 typing_extensions==4.12.2
 urllib3==2.3.0
