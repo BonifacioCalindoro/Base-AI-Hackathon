@@ -117,11 +117,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=result,
                 user_id=user_id,
                 _tags=['bot_agent_response'])
-        
-        await msg.edit_text(result, parse_mode='markdown', disable_web_page_preview=True)
+        try:
+            await msg.edit_text(result, parse_mode='markdown', disable_web_page_preview=True)
+        except Exception as e:
+            logfire.info(
+                f"Error editing message, retrying without markdown: {e}",
+                error=e,
+                text=result,
+                user_id=user_id,
+                _tags=['bot_error_editing_message'])
+            try:
+                await msg.edit_text(result)
+            except Exception as e:
+                logfire.error(
+                    f"Error editing message: {e}",
+                    error=e,
+                    text=result,
+                    user_id=user_id,
+                    _tags=['bot_error_editing_message'])
+                result = f'There was an unexpected error! Please try again later.'
+                await msg.edit_text(result)
         logfire.info(
             f"Agent final response: {result}",
             text=result,
+            user_id=user_id,
             _tags=['bot_agent_final_response'])
     return 'continue'
 

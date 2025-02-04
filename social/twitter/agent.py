@@ -49,12 +49,12 @@ def initialize_agent():
         "If someone mentions you in a tweet, you should respond if it makes sense to do so.",
     ), config
 
-def post(agent_executor, config, prompt: str):
+def post(agent_executor, config, prompt: str, status: dict) -> str:
     with logfire.span("Posting on twitter", prompt=prompt, _tags=["twitter", "twitter_agent", "post"]):
         agent_response = None
         try:
             for chunk in agent_executor.stream(
-                {"messages": [HumanMessage(content=prompt)]}, config
+                {"messages": [HumanMessage(content=prompt + '. Your statuses are: ' + str(status))]}, config
             ):
                 if "agent" in chunk:
                     agent_response = chunk['agent']['messages'][0].content
@@ -67,12 +67,12 @@ def post(agent_executor, config, prompt: str):
             return agent_response
     return agent_response
 
-def check_mentions(agent_executor, config):
+def check_mentions(agent_executor, config, status: dict, prompt: str) -> str:
     with logfire.span("Checking mentions on twitter", _tags=["twitter", "twitter_agent", "check_mentions"]):
         agent_response = None
         try:
             for chunk in agent_executor.stream(
-                {"messages": [HumanMessage(content="Check my mentions and reply to one of them. Choose the most interesting one.")]}, config
+                {"messages": [HumanMessage(content=f"Check my mentions and reply to all of them. Be funny, quirky and engaging, please don't look like a bot. Don't use too many emojis. Some context: '{prompt}'. Your statuses are: {status}")]}, config
             ):
                 if "agent" in chunk:
                     agent_response = chunk['agent']['messages'][0].content

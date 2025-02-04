@@ -54,7 +54,9 @@ async def main_loop():
             if time.time() > last_time_checked_twitter_mentions + mentions_rate_limit:
                 response = check_twitter_mentions(
                     agent_executor=twitter_agent,
-                    config=config
+                    config=config,
+                    prompt=global_prompt,
+                    status=responses
                 )
                 responses["twitter"]["check_mentions"].append({
                     "agent_response": response,
@@ -66,7 +68,8 @@ async def main_loop():
                 response = post_to_twitter(
                     agent_executor=twitter_agent,
                     config=config,
-                    prompt=global_prompt
+                    prompt=global_prompt,
+                    status=responses
                 )
                 responses["twitter"]["post"].append({
                     "agent_response": response,
