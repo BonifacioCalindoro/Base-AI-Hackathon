@@ -29,6 +29,7 @@ async def prompt(user_id: int, prompt: str):
     save_metrics(metrics)
     with logfire.span(
         f"Prompt from user {user_id}",
+        prompt=prompt,
         user_id=user_id,
         _tags=['agents_api_prompt']
     ):

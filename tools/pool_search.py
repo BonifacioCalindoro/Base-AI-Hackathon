@@ -6,7 +6,7 @@ from models.pool_search import SearchPoolsArgs
 
 def search_pools(query: str):
     """
-    Search for pools and token information using a query string (token name, symbol, or address).
+    Use this tool to search for pools or token information using a search query (token name, symbol, or address).
     
     Args:
         query: The search query string (can be token name, symbol, or address)
@@ -14,13 +14,14 @@ def search_pools(query: str):
     Returns:
         List of pools matching the search query
     """
+    query = query.replace('$', '')
     url = geckoterminal_urls.search_pools_with_query(query)
     response = requests.get(url)
     return response.json()
 
 PoolSearchAction = CdpAction(
     name="search_pools",
-    description="Search for pools and token information using a query string (token name, symbol, or address)",
+    description="Use this tool to search for pools or token information using a search query (token name, symbol, or address)",
     args_schema=SearchPoolsArgs,
     func=search_pools,
 )
