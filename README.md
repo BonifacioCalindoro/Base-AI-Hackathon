@@ -4,6 +4,8 @@ This is an AI agent that can be used to trade on the blockchain. It is built usi
 
 UPGRADED TO ONE_TO_MANY model! So you can run one instance on the bot, and let other users interact with it through telegram while separating each user's data and wallets.
 
+Don't want to run your own instance, or don't know how to? You can still use a lite version (without social agent or autotrading backend) at https://t.me/BaseSuperAss_bot
+
 ## Installation and Setup
 
 ```bash
