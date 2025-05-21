@@ -188,6 +188,14 @@ Start the twitter agent with prompt "Post on twitter about how cool SuperAssista
 ```
 And it would start the twitter agent with that custom prompt.
 
+## Funding
+
+## ☕ Sponsor Me
+
+If you like this project, consider [buying me OpenAI credits](https://buymeacoffee.com/bonifaciocalindoro)!
+
+[![Buy Me a Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=☕&slug=bonifaciocalindoro&button_colour=FFDD00&font_colour=000000&font_family=Comic&outline_colour=000000&coffee_colour=ffffff)](https://buymeacoffee.com/bonifaciocalindoro)
+
 ```
 Get the status of the twitter agent
 ```
